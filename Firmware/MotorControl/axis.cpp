@@ -287,7 +287,19 @@ bool Axis::start_closed_loop_control() {
         }
 
         // To avoid any transient on startup, we intialize the setpoint to be the current position
-        controller_.control_mode_updated();
+        if (controller_.config_.control_mode >= Controller::CONTROL_MODE_POSITION_CONTROL) {
+            std::optional<float> pos_init = (controller_.config_.circular_setpoints ?
+                                    controller_.pos_estimate_circular_src_ :
+                                    controller_.pos_estimate_linear_src_).any();
+            if (!pos_init.has_value()) {
+                return false;
+            } else {
+                controller_.pos_setpoint_ = *pos_init;
+                controller_.input_pos_ = *pos_init;
+                float range = controller_.config_.circular_setpoint_range;
+                steps_ = (int64_t)(fmodf_pos(*pos_init, range) / range * controller_.config_.steps_per_circular_range);
+            }
+        }
         controller_.input_pos_updated();
 
         // Avoid integrator windup issues
@@ -409,10 +421,6 @@ bool Axis::run_homing() {
     controller_.pos_setpoint_ = pos_estimate_local.value();
     controller_.vel_setpoint_ = 0.0f;
     controller_.input_pos_updated();
-
-    // Synchronization issue.  Ensure trajectory_done is false prior to the while loop, so that
-    // the controller has time to run move_to_pos() on the next update()
-    controller_.trajectory_done_ = false; 
     
     while ((requested_state_ == AXIS_STATE_UNDEFINED) && motor_.is_armed_ && !(done = controller_.trajectory_done_)) {
         osDelay(1);

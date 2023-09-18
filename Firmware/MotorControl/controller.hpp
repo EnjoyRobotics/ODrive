@@ -30,7 +30,6 @@ public:
         float vel_integrator_gain = 2.0f / 6.0f; // [Nm/(turn/s * s)]
         float vel_limit = 2.0f;                  // [turn/s] Infinity to disable.
         float vel_limit_tolerance = 1.2f;        // ratio to vel_lim. Infinity to disable.
-        float vel_integrator_limit = INFINITY;   // Vel. integrator clamping value. Infinity to disable.
         float vel_ramp_rate = 1.0f;              // [(turn/s) / s]
         float torque_ramp_rate = 0.01f;          // Nm / sec
         bool circular_setpoints = false;
@@ -58,7 +57,6 @@ public:
         Controller* parent;
         void set_input_filter_bandwidth(float value) { input_filter_bandwidth = value; parent->update_filter_gains(); }
         void set_steps_per_circular_range(uint32_t value) { steps_per_circular_range = value > 0 ? value : steps_per_circular_range; }
-        void set_control_mode(ControlMode value) { control_mode = value; parent->control_mode_updated(); }
     };
 
     
@@ -70,8 +68,6 @@ public:
     constexpr void input_pos_updated() {
         input_pos_updated_ = true;
     }
-    bool control_mode_updated();
-    void set_input_pos_and_steps(float pos);
 
     bool select_encoder(size_t encoder_num);
 
@@ -125,7 +121,7 @@ public:
     OutputPort<float> torque_output_ = 0.0f;
 
     // custom setters
-    void set_input_pos(float value) { set_input_pos_and_steps(value); input_pos_updated(); }
+    void set_input_pos(float value) { input_pos_ = value; input_pos_updated(); }
 };
 
 #endif // __CONTROLLER_HPP

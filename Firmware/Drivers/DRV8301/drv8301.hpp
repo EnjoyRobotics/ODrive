@@ -11,7 +11,7 @@
 
 class Drv8301 : public GateDriverBase, public OpAmpBase {
 public:
-    typedef enum : uint32_t {
+    typedef enum {
         FaultType_NoFault  = (0 << 0),  //!< No fault
 
         // Status Register 1
