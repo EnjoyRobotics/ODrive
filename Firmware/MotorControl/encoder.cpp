@@ -362,7 +362,7 @@ bool Encoder::run_offset_calibration() {
         axis_->motor_.current_control_.enable_current_control_src_ = (axis_->motor_.config_.motor_type != Motor::MOTOR_TYPE_GIMBAL);
         axis_->motor_.current_control_.Idq_setpoint_src_.connect_to(&axis_->open_loop_controller_.Idq_setpoint_);
         axis_->motor_.current_control_.Vdq_setpoint_src_.connect_to(&axis_->open_loop_controller_.Vdq_setpoint_);
-        
+
         axis_->motor_.current_control_.phase_src_.connect_to(&axis_->open_loop_controller_.phase_);
         axis_->acim_estimator_.rotor_phase_src_.connect_to(&axis_->open_loop_controller_.phase_);
 
@@ -534,7 +534,7 @@ bool Encoder::abs_spi_start_transaction() {
             spi_task_.on_complete = [](void* ctx, bool success) { ((Encoder*)ctx)->abs_spi_cb(success); };
             spi_task_.on_complete_ctx = this;
             spi_task_.next = nullptr;
-            
+
             spi_arbiter_->transfer_async(&spi_task_);
         } else {
             return false;
@@ -569,9 +569,11 @@ void Encoder::abs_spi_cb(bool success) {
         case MODE_SPI_ABS_AMS: {
             uint16_t rawVal = abs_spi_dma_rx_[0];
             // check if parity is correct (even) and error flag clear
-            if (ams_parity(rawVal) || ((rawVal >> 14) & 1)) {
-                goto done;
-            }
+            //if (ams_parity(rawVal)) {
+            //    goto done;
+            //}
+
+            // @ASTI: AS5047U no parity bits, onley error&warning (15,14)
             pos = rawVal & 0x3fff;
         } break;
 
@@ -726,16 +728,19 @@ bool Encoder::update() {
             if (delta_enc > 6283/2)
                 delta_enc -= 6283;
         } break;
-        
+
         case MODE_SPI_ABS_RLS:
         case MODE_SPI_ABS_AMS:
-        case MODE_SPI_ABS_CUI: 
+        case MODE_SPI_ABS_CUI:
         case MODE_SPI_ABS_AEAT:
         case MODE_SPI_ABS_MA732: {
             if (abs_spi_pos_updated_ == false) {
                 // Low pass filter the error
                 spi_error_rate_ += current_meas_period * (1.0f - spi_error_rate_);
-                if (spi_error_rate_ > 0.005f) {
+                if (max < spi_error_rate_)
+                    max = spi_error_rate_;
+                // MODIFIED
+                if (spi_error_rate_ > 0.5f) {
                     set_error(ERROR_ABS_SPI_COM_FAIL);
                     return false;
                 }
@@ -798,7 +803,7 @@ bool Encoder::update() {
     // Outputs from Encoder for Controller
     pos_estimate_ = pos_estimate_counts_ / (float)config_.cpr;
     vel_estimate_ = vel_estimate_counts_ / (float)config_.cpr;
-    
+
     // TODO: we should strictly require that this value is from the previous iteration
     // to avoid spinout scenarios. However that requires a proper way to reset
     // the encoder from error states.
@@ -831,7 +836,7 @@ bool Encoder::update() {
     //TODO avoid recomputing elec_rad_per_enc every time
     float elec_rad_per_enc = axis_->motor_.config_.pole_pairs * 2 * M_PI * (1.0f / (float)(config_.cpr));
     float ph = elec_rad_per_enc * (interpolated_enc - config_.phase_offset_float);
-    
+
     if (is_ready_) {
         phase_ = wrap_pm_pi(ph) * config_.direction;
         phase_vel_ = (2*M_PI) * *vel_estimate_.present() * axis_->motor_.config_.pole_pairs * config_.direction;
