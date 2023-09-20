@@ -240,6 +240,7 @@ void ODrive::clear_errors() {
         axis.sensorless_estimator_.error_ = SensorlessEstimator::ERROR_NONE;
         axis.encoder_.error_ = Encoder::ERROR_NONE;
         axis.encoder_.spi_error_rate_ = 0.0f;
+        axis.encoder_.max = 0.0f;
         axis.error_ = Axis::ERROR_NONE;
     }
     error_ = ERROR_NONE;

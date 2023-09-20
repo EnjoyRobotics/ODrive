@@ -13,7 +13,7 @@ class Encoder;
 class Encoder : public ODriveIntf::EncoderIntf {
 public:
     static constexpr uint32_t MODE_FLAG_ABS = 0x100;
-    static constexpr std::array<float, 6> hall_edge_defaults = 
+    static constexpr std::array<float, 6> hall_edge_defaults =
         {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
 
     struct Config_t {
@@ -57,7 +57,7 @@ public:
     Encoder(TIM_HandleTypeDef* timer, Stm32Gpio index_gpio,
             Stm32Gpio hallA_gpio, Stm32Gpio hallB_gpio, Stm32Gpio hallC_gpio,
             Stm32SpiArbiter* spi_arbiter);
-    
+
     bool apply_config(ODriveIntf::MotorIntf::MotorType motor_type);
     void setup();
     void set_error(Error error);
@@ -110,6 +110,7 @@ public:
     float calib_scan_response_ = 0.0f; // debug report from offset calib
     int32_t pos_abs_ = 0;
     float spi_error_rate_ = 0.0f;
+    float max = 0.0f;
 
     OutputPort<float> pos_estimate_ = 0.0f; // [turn]
     OutputPort<float> vel_estimate_ = 0.0f; // [turn/s]
