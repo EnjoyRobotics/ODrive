@@ -80,6 +80,8 @@ public:
                                          //<! This is ignored if enable_step_dir is false.
                                          //<! This setting only takes effect on a state transition
                                          //<! into idle or out of closed loop control.
+        bool use_enable_pin = true;
+        bool enable_pin_active_low = true;
 
         bool enable_sensorless_mode = false;
 
@@ -89,6 +91,7 @@ public:
         // Defaults loaded from hw_config in load_configuration in main.cpp
         uint16_t step_gpio_pin = 0;
         uint16_t dir_gpio_pin = 0;
+        uint16_t en_gpio_pin = 0;
 
         LockinConfig_t calibration_lockin = default_calibration();
         LockinConfig_t sensorless_ramp = default_sensorless();
@@ -100,6 +103,13 @@ public:
         Axis* parent = nullptr;
         void set_step_gpio_pin(uint16_t value) { step_gpio_pin = value; parent->decode_step_dir_pins(); }
         void set_dir_gpio_pin(uint16_t value) { dir_gpio_pin = value; parent->decode_step_dir_pins(); }
+        void set_en_gpio_pin(uint16_t value) {
+            en_gpio_pin = value;
+            parent->decode_step_dir_pins();
+            parent->use_enable_pin_update();
+        }
+        void set_use_enable_pin(bool value) { use_enable_pin = value; parent->use_enable_pin_update(); }
+        void set_enable_pin_active_low(bool value) { enable_pin_active_low = value; parent->use_enable_pin_update(); }
     };
 
     struct Homing_t {
@@ -122,6 +132,7 @@ public:
     Axis(int axis_num,
             uint16_t default_step_gpio_pin,
             uint16_t default_dir_gpio_pin,
+            uint16_t default_en_gpio_pin,
             osPriority thread_priority,
             Encoder& encoder,
             SensorlessEstimator& sensorless_estimator,
@@ -141,6 +152,9 @@ public:
     void step_cb();
     void set_step_dir_active(bool enable);
     void decode_step_dir_pins();
+
+    void enable_pin_check();
+    void use_enable_pin_update();
 
     bool do_checks(uint32_t timestamp);
 
@@ -170,6 +184,7 @@ public:
     int axis_num_;
     uint16_t default_step_gpio_pin_;
     uint16_t default_dir_gpio_pin_;
+    uint16_t default_en_gpio_pin_; // @ASTI
     osPriority thread_priority_;
     Config_t config_;
 
@@ -198,6 +213,7 @@ public:
     // updated from config in constructor, and on protocol hook
     Stm32Gpio step_gpio_;
     Stm32Gpio dir_gpio_;
+    Stm32Gpio en_gpio_;
 
     AxisState requested_state_ = AXIS_STATE_STARTUP_SEQUENCE;
     std::array<AxisState, 10> task_chain_ = { AXIS_STATE_UNDEFINED };
