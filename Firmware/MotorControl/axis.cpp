@@ -10,6 +10,7 @@
 Axis::Axis(int axis_num,
            uint16_t default_step_gpio_pin,
            uint16_t default_dir_gpio_pin,
+           uint16_t default_en_gpio_pin,
            osPriority thread_priority,
            Encoder& encoder,
            SensorlessEstimator& sensorless_estimator,
@@ -22,6 +23,7 @@ Axis::Axis(int axis_num,
     : axis_num_(axis_num),
       default_step_gpio_pin_(default_step_gpio_pin),
       default_dir_gpio_pin_(default_dir_gpio_pin),
+      default_en_gpio_pin_(default_en_gpio_pin), // @ASTI: enable
       thread_priority_(thread_priority),
       encoder_(encoder),
       sensorless_estimator_(sensorless_estimator),
@@ -85,6 +87,7 @@ void Axis::clear_config() {
     config_ = {};
     config_.step_gpio_pin = default_step_gpio_pin_;
     config_.dir_gpio_pin = default_dir_gpio_pin_;
+    config_.en_gpio_pin = default_en_gpio_pin_; // @ASTI:
     config_.can.node_id = axis_num_;
 }
 
@@ -124,6 +127,7 @@ void Axis::step_cb() {
 void Axis::decode_step_dir_pins() {
     step_gpio_ = get_gpio(config_.step_gpio_pin);
     dir_gpio_ = get_gpio(config_.dir_gpio_pin);
+    en_gpio_ = get_gpio(config_.en_gpio_pin); // @ASTI
 }
 
 // @brief (de)activates step/dir input
@@ -142,6 +146,68 @@ void Axis::set_step_dir_active(bool active) {
         // TODO: if we change the GPIO while the subscription is active and then
         // unsubscribe then the unsubscribe is for the wrong pin.
         step_gpio_.unsubscribe();
+    }
+
+// @ASTI:
+    en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLUP, 0);
+
+}
+
+// @ASTI:
+void Axis::use_enable_pin_update() {
+    if (config_.use_enable_pin) {
+        en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLUP, 0);
+        return;
+
+        if (config_.enable_pin_active_low) {
+            en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLUP, 0);
+        } else {
+            en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLDOWN, 0);
+        }
+
+#if 0
+        GPIO_InitTypeDef GPIO_InitStruct;
+        GPIO_InitStruct.Pin = en_pin_;
+        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+        if (config_.enable_pin_active_low) {
+            GPIO_InitStruct.Pull = GPIO_PULLUP;
+        } else {
+            GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+        }
+        HAL_GPIO_Init(en_port_, &GPIO_InitStruct);
+#endif
+    }
+}
+
+// @ASTI:
+void Axis::enable_pin_check() {
+
+    //config_.enable_pin_active_low = en_gpio_.read() ? 0 : 1;
+    //return;
+
+    if (config_.use_enable_pin) {
+
+        bool enable = en_gpio_.read();
+
+        if (enable && (current_state_ != AXIS_STATE_IDLE)) {
+
+            error_ |= ERROR_EMERGENCY_STOP_ACTIVATED;
+            controller_.input_vel_ = 0;
+            requested_state_ = AXIS_STATE_IDLE;
+        }
+
+#if 0
+        bool enable = HAL_GPIO_ReadPin(en_port_, en_pin_) ^ config_.enable_pin_active_low;
+        if (enable && (current_state_ == AXIS_STATE_IDLE)) {
+            if (startup_sequence_done_) {
+                requested_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;
+            } else {
+                requested_state_ = AXIS_STATE_STARTUP_SEQUENCE;
+            }
+        } else if (!enable && (current_state_ != AXIS_STATE_IDLE)) {
+            requested_state_ = AXIS_STATE_IDLE;
+        }
+#endif
     }
 }
 
@@ -204,7 +270,7 @@ bool Axis::run_lockin_spin(const LockinConfig_t &lockin_config, bool remain_arme
 
         motor_.current_control_.phase_src_.connect_to(&open_loop_controller_.phase_);
         acim_estimator_.rotor_phase_src_.connect_to(&open_loop_controller_.phase_);
-        
+
         motor_.phase_vel_src_.connect_to(&open_loop_controller_.phase_vel_);
         motor_.current_control_.phase_vel_src_.connect_to(&open_loop_controller_.phase_vel_);
         acim_estimator_.rotor_phase_vel_src_.connect_to(&open_loop_controller_.phase_vel_);
@@ -495,6 +561,14 @@ void Axis::run_state_machine_loop() {
 
         // Run the specified state
         // Handlers should exit if requested_state != AXIS_STATE_UNDEFINED
+
+        // @ASTI:
+        if (config_.use_enable_pin) {
+            bool enable = en_gpio_.read();
+            if (enable) error_ |= ERROR_EMERGENCY_STOP_ACTIVATED;
+            //else error_ &= ~ERROR_EMERGENCY_STOP_ACTIVATED;
+        }
+
         bool status;
         switch (current_state_) {
             case AXIS_STATE_MOTOR_CALIBRATION: {

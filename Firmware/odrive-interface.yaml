@@ -438,6 +438,8 @@ interfaces:
             doc: Check `motor.error` for more details.
           UNKNOWN_POSITION:
             doc: There isn't a valid position estimate available.
+          EMERGENCY_STOP_ACTIVATED:
+            doc: emergency stop activated
       step_dir_active: readonly bool
       last_drv_fault: readonly uint32
       steps: readonly int64
@@ -473,12 +475,15 @@ interfaces:
               This setting only takes effect on a state transition
               into idle or out of closed loop control.
           enable_sensorless_mode: bool
+          use_enable_pin: {type: bool, c_setter: 'set_use_enable_pin'}
+          enable_pin_active_low: {type: bool, c_setter: 'set_enable_pin_active_low'}
           watchdog_timeout:
             type: float32
             unit: s
           enable_watchdog: bool
           step_gpio_pin: {type: uint16, c_setter: 'set_step_gpio_pin'}
           dir_gpio_pin: {type: uint16, c_setter: 'set_dir_gpio_pin'}
+          en_gpio_pin: {type: uint16, c_setter: 'set_en_gpio_pin'}
           calibration_lockin: # TODO: this is a subset of lockin state
             c_is_class: False
             attributes:

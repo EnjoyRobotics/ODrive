@@ -127,6 +127,7 @@ enum AxisError {
     AXIS_ERROR_HOMING_WITHOUT_ENDSTOP        = 0x00020000,
     AXIS_ERROR_OVER_TEMP                     = 0x00040000,
     AXIS_ERROR_UNKNOWN_POSITION              = 0x00080000,
+    AXIS_ERROR_EMERGENCY_STOP_ACTIVATED      = 0x00100000,
 };
 
 // ODrive.Motor.Error
