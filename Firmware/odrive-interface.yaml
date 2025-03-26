@@ -525,7 +525,6 @@ interfaces:
               into idle or out of closed loop control.
           enable_sensorless_mode: bool
           use_enable_pin: {type: bool, c_setter: 'set_use_enable_pin'}
-          enable_pin_active_low: {type: bool, c_setter: 'set_enable_pin_active_low'}
           watchdog_timeout:
             type: float32
             unit: s

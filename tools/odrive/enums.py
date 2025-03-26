@@ -261,6 +261,7 @@ class AxisError(enum.IntFlag):
     HOMING_WITHOUT_ENDSTOP                   = 0x00020000
     OVER_TEMP                                = 0x00040000
     UNKNOWN_POSITION                         = 0x00080000
+    EMERGENCY_STOP_ACTIVATED                 = 0x00100000
 class MotorError(enum.IntFlag):
     NONE                                     = 0x00000000
     PHASE_RESISTANCE_OUT_OF_RANGE            = 0x00000001

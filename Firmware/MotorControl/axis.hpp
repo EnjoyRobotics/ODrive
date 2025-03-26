@@ -81,7 +81,6 @@ public:
                                          //<! This setting only takes effect on a state transition
                                          //<! into idle or out of closed loop control.
         bool use_enable_pin = true;
-        bool enable_pin_active_low = true;
 
         bool enable_sensorless_mode = false;
 
@@ -103,13 +102,8 @@ public:
         Axis* parent = nullptr;
         void set_step_gpio_pin(uint16_t value) { step_gpio_pin = value; parent->decode_step_dir_pins(); }
         void set_dir_gpio_pin(uint16_t value) { dir_gpio_pin = value; parent->decode_step_dir_pins(); }
-        void set_en_gpio_pin(uint16_t value) {
-            en_gpio_pin = value;
-            parent->decode_step_dir_pins();
-            parent->use_enable_pin_update();
-        }
-        void set_use_enable_pin(bool value) { use_enable_pin = value; parent->use_enable_pin_update(); }
-        void set_enable_pin_active_low(bool value) { enable_pin_active_low = value; parent->use_enable_pin_update(); }
+        void set_en_gpio_pin(uint16_t value) { en_gpio_pin = value; parent->decode_step_dir_pins(); }
+        void set_use_enable_pin(bool value) { use_enable_pin = value; }
     };
 
     struct Homing_t {
@@ -152,9 +146,6 @@ public:
     void step_cb();
     void set_step_dir_active(bool enable);
     void decode_step_dir_pins();
-
-    void enable_pin_check();
-    void use_enable_pin_update();
 
     bool do_checks(uint32_t timestamp);
 

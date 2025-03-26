@@ -150,65 +150,6 @@ void Axis::set_step_dir_active(bool active) {
 
 // @ASTI:
     en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLUP, 0);
-
-}
-
-// @ASTI:
-void Axis::use_enable_pin_update() {
-    if (config_.use_enable_pin) {
-        en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLUP, 0);
-        return;
-
-        if (config_.enable_pin_active_low) {
-            en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLUP, 0);
-        } else {
-            en_gpio_.config(GPIO_MODE_INPUT, GPIO_PULLDOWN, 0);
-        }
-
-#if 0
-        GPIO_InitTypeDef GPIO_InitStruct;
-        GPIO_InitStruct.Pin = en_pin_;
-        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-        if (config_.enable_pin_active_low) {
-            GPIO_InitStruct.Pull = GPIO_PULLUP;
-        } else {
-            GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-        }
-        HAL_GPIO_Init(en_port_, &GPIO_InitStruct);
-#endif
-    }
-}
-
-// @ASTI:
-void Axis::enable_pin_check() {
-
-    //config_.enable_pin_active_low = en_gpio_.read() ? 0 : 1;
-    //return;
-
-    if (config_.use_enable_pin) {
-
-        bool enable = en_gpio_.read();
-
-        if (enable && (current_state_ != AXIS_STATE_IDLE)) {
-
-            error_ |= ERROR_EMERGENCY_STOP_ACTIVATED;
-            controller_.input_vel_ = 0;
-            requested_state_ = AXIS_STATE_IDLE;
-        }
-
-#if 0
-        bool enable = HAL_GPIO_ReadPin(en_port_, en_pin_) ^ config_.enable_pin_active_low;
-        if (enable && (current_state_ == AXIS_STATE_IDLE)) {
-            if (startup_sequence_done_) {
-                requested_state_ = AXIS_STATE_CLOSED_LOOP_CONTROL;
-            } else {
-                requested_state_ = AXIS_STATE_STARTUP_SEQUENCE;
-            }
-        } else if (!enable && (current_state_ != AXIS_STATE_IDLE)) {
-            requested_state_ = AXIS_STATE_IDLE;
-        }
-#endif
-    }
 }
 
 // @brief Do axis level checks and call subcomponent do_checks
@@ -223,6 +164,13 @@ bool Axis::do_checks(uint32_t timestamp) {
         error_ |= ERROR_MIN_ENDSTOP_PRESSED;
     } else if (max_endstop_.config_.enabled && max_endstop_.rose() && !(current_state_ == AXIS_STATE_HOMING)) {
         error_ |= ERROR_MAX_ENDSTOP_PRESSED;
+    }
+
+    // @ASTI:
+    if (config_.use_enable_pin) {
+        bool enable = en_gpio_.read();
+        if (enable) error_ |= ERROR_EMERGENCY_STOP_ACTIVATED;
+        else error_ &= ~ERROR_EMERGENCY_STOP_ACTIVATED;
     }
 
     return check_for_errors();
@@ -557,13 +505,6 @@ void Axis::run_state_machine_loop() {
 
         // Run the specified state
         // Handlers should exit if requested_state != AXIS_STATE_UNDEFINED
-
-        // @ASTI:
-        if (config_.use_enable_pin) {
-            bool enable = en_gpio_.read();
-            if (enable) error_ |= ERROR_EMERGENCY_STOP_ACTIVATED;
-            //else error_ &= ~ERROR_EMERGENCY_STOP_ACTIVATED;
-        }
 
         bool status;
         switch (current_state_) {
